@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>منظمي الذكي 3D</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    window.switchTab = function(tabId, element) {
+      try {
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(c => c.classList.remove('active'));
+
+        const items = document.querySelectorAll('.nav-item');
+        items.forEach(i => i.classList.remove('active'));
+
+        const targetTab = document.getElementById('tab-' + tabId);
+        if (targetTab) {
+          targetTab.classList.add('active');
+        }
+
+        if (element) {
+          element.classList.add('active');
+        }
+
+        if (tabId === 'stats' && typeof window.renderStats === 'function') {
+          window.renderStats();
+        }
+      } catch (err) {
+        console.error("خطأ في التنقل:", err);
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      --bg-dark: #0a1410;
+      --panel-bg: #12221b;
+      --card-bg: #1a2e25;
+      --accent-green: #2e7d5a;
+      --accent-light: #34d399;
+      --text-main: #ecfdf5;
+      --text-muted: #9ca3af;
+      --border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Tajawal', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .top-nav {
+      background-color: var(--panel-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px;
+      z-index: 100;
+    }
+
+    .brand {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--accent-light);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 5px;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 5px;
+    }
+
+    .nav-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item.active {
+      background-color: var(--accent-green);
+      color: #fff;
+      font-weight: 500;
+      border-color: var(--accent-light);
+    }
+
+    .main-content {
+      flex: 1;
+      position: relative;
+      overflow-y: auto;
+      padding: 15px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .page-title {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: var(--accent-light);
+    }
+
+    .task-form-card {
+      background: var(--panel-bg);
+      padding: 15px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+    }
+
+    input[type="text"], input[type="number"], select, button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    button.btn-primary {
+      background: var(--accent-green);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      margin-top: 5px;
+      transition: background 0.2s;
+    }
+
+    button.btn-primary:hover {
+      background: #236347;
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 220px;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      border: 1px solid var(--border-color);
+      margin-bottom: 15px;
+    }
+
+    .task-card {
+      background: var(--panel-bg);
+      padding: 12px;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: 1px solid var(--border-color);
+      border-right: 5px solid var(--accent-light);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .task-info h4 {
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+
+    .task-info p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* تصميم الساعة الخضراء الداكنة الجديدة */
+    .task-clock-box {
+      background: #0d1a14;
+      border: 2px solid var(--accent-green);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: monospace;
+      font-size: 1.25rem;
+      color: var(--accent-light);
+      font-weight: bold;
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.6);
+      letter-spacing: 2px;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .timer-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 0.8rem;
+      background: var(--accent-green);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .complete-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 0.8rem;
+      background: #059669;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 15px;
+    }
+
+    .day-schedule-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .day-schedule-card h4 {
+      color: var(--accent-light);
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 5px;
+      font-size: 0.95rem;
+    }
+
+    .lesson-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+    }
+
+    .delete-btn {
+      color: #ef4444;
+      background: none;
+      border: none;
+      width: auto;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .progress-bar-bg {
+      background: var(--card-bg);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-bar-fill {
+      background: var(--accent-light);
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .stats-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .stat-box {
+      background: var(--panel-bg);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      text-align: center;
+    }
+
+    .stat-box h4 {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .stat-box .number {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: var(--accent-light);
+    }
+
+    input[type="range"] {
+      height: 6px;
+      accent-color: var(--accent-light);
+      cursor: pointer;
+    }
+
+    .goal-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-bg);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .goal-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .goal-left input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent-light);
+      cursor: pointer;
+    }
+
+    .goal-item.completed span {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="top-nav">
+    <div class="brand">
+      <i class="fa-solid fa-cube"></i>
+      <span>منظمي الذكي 3D</span>
+    </div>
+    <ul class="nav-list">
+      <li class="nav-item active" onclick="switchTab('tasks', this)">
+        <i class="fa-solid fa-square-check"></i>
+        <span>المهام و 3D</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('schedule', this)">
+        <i class="fa-solid fa-calendar-days"></i>
+        <span>الجدول</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('projects', this)">
+        <i class="fa-solid fa-folder"></i>
+        <span>المشاريع</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('stats', this)">
+        <i class="fa-solid fa-chart-simple"></i>
+        <span>إحصائياتك</span>
+      </li>
+      <li class="nav-item" onclick="switchTab('goals', this)">
+        <i class="fa-solid fa-bullseye"></i>
+        <span>أهدافك</span>
+      </li>
+    </ul>
+  </nav>
+
+  <main class="main-content">
+
+    <section id="tab-tasks" class="tab-content active">
+      <div class="task-form-card">
+        <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--accent-light);">إضافة مهمة جديدة</h3>
+        <form id="task-form">
+          <div class="form-group">
+            <label>اسم الدرس أو المهمة</label>
+            <input type="text" id="task-name" placeholder="أكتب مثلاً: فيزياء، كيمياء، أحياء..." required>
+          </div>
+          <div class="form-group">
+            <label>المدة بالدقائق (من 30 دقيقة إلى 300 دقيقة)</label>
+            <input type="number" id="task-duration" placeholder="30" min="30" max="300" required>
+          </div>
+          <div class="form-group">
+            <label>المادة (تحديد تلقائي)</label>
+            <select id="task-color">
+              <option value="#10b981">علوم (أخضر)</option>
+              <option value="#06b6d4">فيزياء (أزرق سماوي)</option>
+              <option value="#ec4899">كيمياء (وردي)</option>
+              <option value="#84cc16">أحياء (أخضر فاتح)</option>
+              <option value="#ef4444">رياضيات (أحمر)</option>
+              <option value="#3b82f6">لغة عربية (أزرق)</option>
+              <option value="#f59e0b">لغة إنجليزية (برتقالي)</option>
+              <option value="#8b5cf6">دراسات (بنفسجي)</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary">إضافة إلى الفضاء 3D والمهام</button>
+        </form>
+      </div>
+
+      <div id="canvas-container"></div>
+
+      <div>
+        <h3 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 5px;">قائمة المهام اليومية:</h3>
+        <div id="tasks-container"></div>
+      </div>
+    </section>
+
+    <section id="tab-schedule" class="tab-content">
+      <h2 class="page-title">إدارة جدولك الدراسي</h2>
+      <div class="task-form-card">
+        <h3 style="font-size: 0.95rem; margin-bottom: 10px; color: var(--accent-light);">إضافة حصة / درس جديد</h3>
+        <form id="schedule-form">
+          <div class="form-group">
+            <label>اليوم</label>
+            <select id="sched-day">
+              <option value="الأحد">الأحد</option>
+              <option value="الإثنين">الإثنين</option>
+              <option value="الثلاثاء">الثلاثاء</option>
+              <option value="الأربعاء">الأربعاء</option>
+              <option value="الخميس">الخميس</option>
+              <option value="الجمعة">الجمعة</option>
+              <option value="السبت">السبت</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>التوقيت / الحصة</label>
+            <input type="text" id="sched-time" placeholder="مثال: 09:00 ص - 10:30 ص" required>
+          </div>
+          <div class="form-group">
+            <label>اسم المادة</label>
+            <input type="text" id="sched-subject" placeholder="مثال: فيزياء، كيمياء، أحياء..." required>
+          </div>
+          <button type="submit" class="btn-primary">إضافة للجدول</button>
+        </form>
+      </div>
+      <div id="schedule-display"></div>
+    </section>
+
+    <section id="tab-projects" class="tab-content">
+      <h2 class="page-title">إدارة المشاريع والمواد</h2>
+      <div class="task-form-card">
+        <h3 style="font-size: 0.95rem; margin-bottom: 10px; color: var(--accent-light);">إضافة مشروع / مادة جديدة</h3>
+        <form id="project-form">
+          <div class="form-group">
+            <label>اسم المشروع أو المادة</label>
+            <input type="text" id="proj-title" placeholder="مثال: مادة الفيزياء / كيمياء" required>
+          </div>
+          <div class="form-group">
+            <label>الوصف أو التفاصيل</label>
+            <input type="text" id="proj-desc" placeholder="مثال: مذاكرة الفصل الأول والثاني" required>
+          </div>
+          <div class="form-group">
+            <label>نسبة الإنجاز المبدئية (%)</label>
+            <input type="number" id="proj-progress" min="0" max="100" value="0" required>
+          </div>
+          <button type="submit" class="btn-primary">إضافة المشروع</button>
+        </form>
+      </div>
+      <div id="projects-display" class="grid-container"></div>
+    </section>
+
+    <section id="tab-stats" class="tab-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 class="page-title" style="margin-bottom: 0;">إحصائيات المذاكرة</h2>
+        <button onclick="resetStats()" style="width: auto; padding: 5px 10px; font-size: 0.75rem; background: #ef4444; border: none; border-radius: 6px; cursor: pointer; color: #fff;">تصفير البيانات</button>
+      </div>
+      <div class="stats-summary">
+        <div class="stat-box">
+          <h4>ساعات المذاكرة</h4>
+          <div class="number" id="stat-hours">0 س</div>
+        </div>
+        <div class="stat-box">
+          <h4>المهام المكتملة</h4>
+          <div class="number" id="stat-tasks">0 مهمة</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size: 0.95rem; margin-bottom: 10px; color: var(--accent-light);">ساعات المذاكرة الأسبوعية</h3>
+        <div style="position: relative; height: 220px; width: 100%;">
+          <canvas id="weeklyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-goals" class="tab-content">
+      <h2 class="page-title">إدارة أهدافك</h2>
+      <div class="task-form-card">
+        <h3 style="font-size: 0.95rem; margin-bottom: 10px; color: var(--accent-light);">إضافة هدف جديد</h3>
+        <form id="goal-form">
+          <div class="form-group">
+            <label>عنوان الهدف</label>
+            <input type="text" id="goal-title" placeholder="مثال: إنهاء درس الكيمياء..." required>
+          </div>
+          <button type="submit" class="btn-primary">إضافة الهدف</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 12px; color: var(--accent-light);">
+          <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i> أهداف الأسبوع
+        </h3>
+        <div id="goals-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    function getSubjectColor(subjectName) {
+      if (!subjectName) return '#2e7d5a';
+      const text = subjectName.toLowerCase();
+      if (text.includes('فيزي') || text.includes('physic')) return '#06b6d4';
+      if (text.includes('كيمي') || text.includes('chemis')) return '#ec4899';
+      if (text.includes('أحياء') || text.includes('احياء') || text.includes('biol')) return '#84cc16';
+      if (text.includes('علوم') || text.includes('science')) return '#10b981';
+      if (text.includes('رياض') || text.includes('math')) return '#ef4444';
+      if (text.includes('عرب') || text.includes('arabic')) return '#3b82f6';
+      if (text.includes('انجليز') || text.includes('إنجليز') || text.includes('english')) return '#f59e0b';
+      if (text.includes('دراسات') || text.includes('تاريخ') || text.includes('جغرافيا')) return '#8b5cf6';
+      return '#2e7d5a';
+    }
+
+    let myStats = JSON.parse(localStorage.getItem('my_user_stats')) || {
+      completedTasks: 0,
+      totalMinutes: 0,
+      weeklyMinutes: [0, 0, 0, 0, 0, 0, 0]
+    };
+
+    function getTodayIndex() {
+      const jsDay = new Date().getDay();
+      const map = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
+      return map[jsDay];
+    }
+
+    function addCompletedTaskStats(durationMinutes) {
+      myStats.completedTasks += 1;
+      myStats.totalMinutes += parseInt(durationMinutes || 0);
+      const todayIdx = getTodayIndex();
+      myStats.weeklyMinutes[todayIdx] += parseInt(durationMinutes || 0);
+      localStorage.setItem('my_user_stats', JSON.stringify(myStats));
+      renderStats();
+    }
+
+    let weeklyChartInstance = null;
+
+    window.renderStats = function() {
+      const hoursElem = document.getElementById('stat-hours');
+      const tasksElem = document.getElementById('stat-tasks');
+      if (hoursElem && tasksElem) {
+        const hours = (myStats.totalMinutes / 60).toFixed(1);
+        hoursElem.textContent = `${hours} س`;
+        tasksElem.textContent = `${myStats.completedTasks} مهمة`;
+      }
+      const chartElem = document.getElementById('weeklyChart');
+      if (chartElem && typeof Chart !== 'undefined') {
+        const weeklyHours = myStats.weeklyMinutes.map(m => (m / 60).toFixed(1));
+        if (weeklyChartInstance) {
+          weeklyChartInstance.data.datasets[0].data = weeklyHours;
+          weeklyChartInstance.update();
+        } else {
+          const ctx = chartElem.getContext('2d');
+          weeklyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+              datasets: [{
+                label: 'ساعات المذاكرة',
+                data: weeklyHours,
+                backgroundColor: '#34d399',
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: { color: '#9ca3af' },
+                  grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                },
+                x: {
+                  ticks: { color: '#9ca3af' },
+                  grid: { display: false }
+                }
+              }
+            }
+          });
+        }
+      }
+    };
+
+    window.resetStats = function() {
+      if (confirm("هل أنت تأكد من تصفير إحصائياتك؟")) {
+        myStats = { completedTasks: 0, totalMinutes: 0, weeklyMinutes: [0, 0, 0, 0, 0, 0, 0] };
+        localStorage.setItem('my_user_stats', JSON.stringify(myStats));
+        renderStats();
+      }
+    };
+
+    let myTasks = JSON.parse(localStorage.getItem('my_user_tasks')) || [
+      { id: 1, name: 'مذاكرة فيزياء - فصل الحركة', duration: 45, color: '#06b6d4', remaining: 45 * 60, running: false }
+    ];
+
+    let scene, camera, renderer;
+    let taskMeshes = [];
+
+    function init3D() {
+      const container = document.getElementById('canvas-container');
+      if (!container || typeof THREE === 'undefined') return;
+
+      scene = new THREE.Scene
